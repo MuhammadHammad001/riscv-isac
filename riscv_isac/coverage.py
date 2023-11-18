@@ -1117,6 +1117,18 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                                                 break
                                         if is_csr_commit:
                                             for coverpoints in value['csr_comb']:
+                                                def get_key_from_value(dictionary, target_value):
+                                                    for key, value in dictionary.items():
+                                                        if value == target_value:
+                                                            return key
+                                                    return None  # Value not found in the dictionary
+                                                pattern_csr = r'old\("([^"]+)"\)'
+                                                match = re.search(pattern_csr, coverpoints)
+                                                if match:
+                                                    required_csr = match.group(1)
+                                                    key = get_key_from_value(csr_reg_num_to_str, required_csr)
+                                                    if (instr.csr != key):
+                                                        continue
                                                 if eval(
                                                     coverpoints,
                                                     {
