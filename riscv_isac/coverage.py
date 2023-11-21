@@ -178,6 +178,7 @@ class cross():
 
         self.arch_state = archState(xlen,flen)
         self.csr_regfile = csr_registers(xlen)
+        self.mem_vals = {}
         self.stats = statistics(xlen, flen)
 
         self.result = 0
@@ -450,7 +451,7 @@ class cross():
 
                 del self.instr_stat_meta_at_addr[key_instr_addr]
 
-            instr.update_arch_state(self.arch_state, self.csr_regfile)
+            instr.update_arch_state(self.arch_state, self.csr_regfile, self.mem_vals)
 
     def get_metric(self):
         return self.result
@@ -866,7 +867,7 @@ def simd_val_unpack(val_comb, op_width, op_name, val, local_dict):
     if simd_size == op_width:
         local_dict[f"{op_name}_val"]=elm_val
 
-def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr_pairs, sig_addrs, stats, arch_state, csr_regfile, no_count, elf):
+def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr_pairs, sig_addrs, stats, arch_state, csr_regfile, no_count, mem_vals, elf):
     '''
     This function checks if the current instruction under scrutiny matches a
     particular coverpoint of interest. If so, it updates the coverpoints and
@@ -944,7 +945,7 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
             def old_fn_csr_comb_covpt(csr_reg):
                 return old_csr_regfile[csr_reg]
 
-            instr.update_arch_state(arch_state, csr_regfile)
+            instr.update_arch_state(arch_state, csr_regfile, mem_vals)
 
             if 'rs1' in instr_vars:
                 rs1 = instr_vars['rs1']
@@ -984,6 +985,31 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                     return None
             def check_label_address(label):
                 return utils.collect_label_address(elf, label)
+
+            def get_mem_val(addr, bytes):
+                if addr in mem_vals:
+                    return mem_vals.get(addr)
+                else:
+                    mem_val = utils.get_value_at_location(elf_path = elf, location = addr, bytes = bytes)
+                    if mem_val is not None:
+                        mem_vals[addr] = mem_val
+                        return mem_val
+                    else:
+                        return None
+                    
+            def get_pte_per(pa, pte_addr, pgtb_addr, pte_size):
+                if (pgtb_addr >> 12) == (pte_addr >> 12):
+                    if ((pa >> 12) == (get_mem_val(pte_addr, pte_size) >> 10)):
+                        return get_mem_val(pte_addr, pte_size) & 0x3FF
+                    else:
+                        return None
+                else:
+                    return None
+
+            globals()['get_addr'] = check_label_address
+            globals()['mem_val'] = get_mem_val
+            globals()['get_pte_per'] = get_pte_per
+            globals()['read_csr'] = read_fn_csr_comb_covpt
 
             if enable :
                 ucovpt = []
@@ -1137,7 +1163,9 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                                                         "old": old_fn_csr_comb_covpt,
                                                         "write": write_fn_csr_comb_covpt,
                                                         "read_csr": read_fn_csr_comb_covpt,
-                                                        "get_addr": check_label_address
+                                                        "get_addr": check_label_address,
+                                                        "mem_val":get_mem_val,
+                                                        "get_pte_per":get_pte_per
                                                     },
                                                     instr_vars
                                                 ):
@@ -1165,7 +1193,10 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                                                     "__builtins__":None,
                                                     "old": old_fn_csr_comb_covpt,
                                                     "write": write_fn_csr_comb_covpt,
-                                                    "read_csr": read_fn_csr_comb_covpt
+                                                    "read_csr": read_fn_csr_comb_covpt,
+                                                    "get_addr": check_label_address,
+                                                    "mem_val":get_mem_val,
+                                                    "get_pte_per":get_pte_per
                                                 },
                                                 instr_vars
                                             ):
@@ -1425,6 +1456,7 @@ def compute(trace_file, test_name, cgf, parser_name, decoder_name, detailed, xle
 
     global arch_state
     global csr_regfile
+    global mem_vals
     global stats
     global cross_cover_queue
 
@@ -1450,6 +1482,7 @@ def compute(trace_file, test_name, cgf, parser_name, decoder_name, detailed, xle
     arch_state = archState(xlen,flen)
     csr_regfile = csr_registers(xlen)
     stats = statistics(xlen, flen)
+    mem_vals = {}
 
     ## Get coverpoints from cgf
     obj_dict = {} ## (label,coverpoint): object
@@ -1522,6 +1555,7 @@ def compute(trace_file, test_name, cgf, parser_name, decoder_name, detailed, xle
                                     arch_state,
                                     csr_regfile,
                                     no_count,
+                                    mem_vals,
                                     elf
                                     )
                             )

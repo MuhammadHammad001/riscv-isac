@@ -83,7 +83,8 @@ class instructionObject():
         reg_commit = None,
         csr_commit = None,
         mnemonic = None,
-        mode = None
+        mode = None,
+        mem_val = None
     ):
 
         '''
@@ -123,6 +124,7 @@ class instructionObject():
         self.rs3_nregs = 1
         self.rd_nregs = 1
         self.mode = mode
+        self.mem_val=mem_val
 
     def is_sig_update(self):
         return self.instr_name in instrs_sig_update
@@ -274,7 +276,7 @@ class instructionObject():
         return changed_regs
 
 
-    def update_arch_state(self, arch_state, csr_regfile):
+    def update_arch_state(self, arch_state, csr_regfile, mem_vals):
         '''
         This function updates the arch state and csr regfiles
         with the effect of this instruction.
@@ -297,6 +299,9 @@ class instructionObject():
                 if (commit[0] == "CSR") and commit[2] != '->':
                     csr_regfile[commit[1]] = str(commit[3][2:])
 
+        mem_val = self.mem_val
+        if mem_val is not None:
+            mem_vals[int(mem_val[0][0], 16)] = int(mem_val[0][1], 16)
 
     def evaluate_instr_var(self, instr_var_name, *args):
         '''
