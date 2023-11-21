@@ -1006,8 +1006,46 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                 else:
                     return None
 
+            def translate(vm_mode, va, sroot_pgtb_addr):
+                vm_settings = {
+                    32: ([22, 12], [0x3FF, 0x3FF]),
+                    39: ([30, 21, 12], [0x3FF, 0x3FF, 0x3FF]),
+                    48: ([39, 30, 21, 12], [0x3FF, 0x3FF, 0x3FF, 0x3FF])
+                }
+
+                if vm_mode not in vm_settings:
+                    return None
+                # print(hex(va))
+                shift_bits, masks = vm_settings[vm_mode]
+                vpn = [((va >> (shift_bits[i])) & mask) for i, mask in enumerate(masks)]
+                paddr = va & 0xFFF
+                pte_addr = sroot_pgtb_addr
+
+                for i in range(len(vpn)):
+                    pte = None
+                    if vm_mode == 32:
+                        pte_size = 4
+                    else:
+                        pte_size = 8
+                    pte_addr += (vpn[i] * pte_size)
+                    pte = get_mem_val(pte_addr, pte_size)
+
+                    if pte is None:
+                        return None
+
+                    if (pte & 0x3FF) != 1:
+                        paddr = ((pte >> 10) << 12) + paddr
+                        return paddr
+                    else:
+                        pte_addr = ((pte >> 10) << 12)
+                        if (i == len(vpn) - 1):
+                            return None
+
+                return paddr
+
             globals()['get_addr'] = check_label_address
             globals()['mem_val'] = get_mem_val
+            globals()['translate'] = translate
             globals()['get_pte_per'] = get_pte_per
             globals()['read_csr'] = read_fn_csr_comb_covpt
 
@@ -1015,7 +1053,6 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                 ucovpt = []
                 covpt = []
                 csr_covpt = []
-
                 for cov_labels,value in cgf.items():
                     if cov_labels != 'datasets':
                         if 'mnemonics' in value:
@@ -1165,6 +1202,7 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                                                         "read_csr": read_fn_csr_comb_covpt,
                                                         "get_addr": check_label_address,
                                                         "mem_val":get_mem_val,
+                                                        "translate":translate,
                                                         "get_pte_per":get_pte_per
                                                     },
                                                     instr_vars
@@ -1196,6 +1234,7 @@ def compute_per_line(queue, event, cgf_queue, stats_queue, cgf, xlen, flen, addr
                                                     "read_csr": read_fn_csr_comb_covpt,
                                                     "get_addr": check_label_address,
                                                     "mem_val":get_mem_val,
+                                                    "translate":translate,
                                                     "get_pte_per":get_pte_per
                                                 },
                                                 instr_vars

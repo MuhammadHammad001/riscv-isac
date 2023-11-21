@@ -62,6 +62,66 @@ irrespective of their original size.')
             return None
         else:
             return mem_val
+    def extractVirtualMemory(self, line):
+        mem_r_pattern = re.compile(r'mem\[R,([0-9xABCDEF]+)\] -> 0x([0-9xABCDEF]+)')
+        mem_x_pattern = re.compile(r'mem\[X,([0-9xABCDEF]+)\] -> 0x([0-9xABCDEF]+)')
+        mem_depa_pattern = re.compile(r'mem\[([0-9xABCDEF]+)\]')
+        instr_pattern_c_sail = self.instr_pattern_c_sail
+        match = instr_pattern_c_sail.search(line)
+        iptw_level_4, iptw_level_3, iptw_level_2, iptw_level_1, iptw_level_0 = (None, ) * 5
+        dptw_level_4, dptw_level_3, dptw_level_2, dptw_level_1, dptw_level_0 = (None, ) * 5
+        depa=None
+        ieva=None
+        ieva_align=None
+        depa_align=None
+        iepa=None
+        iepa_align=None
+        if match:
+            # Split the line based on the match
+            line_part1, line_part2 = line.split(match.group(0), 1)
+            iptw=(mem_r_pattern.findall(line_part1))
+            dptw=(mem_r_pattern.findall(line_part2))
+            iepa_list=(mem_x_pattern.findall(line_part1))
+            ieva = int(match.group('addr'),16)
+            iepa_align, ieva_align = 0,0
+            if iptw is not None:
+                size_iptw=len(iptw)
+                len_iptw =size_iptw
+                for i in range(len_iptw):
+                    globals()[f"iptw_level_{i}"] = int(iptw[size_iptw-1][0],16)
+                    size_iptw = size_iptw -1
+            if dptw is not None:
+                if "lw" in match.group('mnemonic'):
+                    depa=dptw.pop()
+                    depa=int(depa[0],16)
+                else:
+                    depa_list=mem_depa_pattern.findall(line_part2)
+                    if len(depa_list) != 0:
+                        depa=int(depa_list[0],16)
+                size_dptw=len(dptw)
+                len_dptw =size_dptw
+                for i in range(len_dptw):
+                    globals()[f"dptw_level_{i}"] = int(dptw[size_dptw-1][0],16)
+                    size_dptw = size_dptw -1
+            if len(iepa_list) != 0:
+                iepa = int(iepa_list[0][0], 16)
+            if ieva is not None:
+                if ieva & 0b11 == 0:
+                    ieva_align =1
+            if iepa is not None:
+                if iepa & 0b11 == 0:
+                    iepa_align =1
+            if depa is not None:
+                if depa & 0b11 == 0:
+                    depa_align =1
+        return (iptw_level_4, iptw_level_3, iptw_level_2, iptw_level_1, iptw_level_0,
+                dptw_level_4, dptw_level_3, dptw_level_2, dptw_level_1, dptw_level_0,
+                depa,
+                ieva,
+                iepa,
+                ieva_align,
+                iepa_align,
+                depa_align)
 
     @plugins.parserHookImpl
     def __iter__(self):
@@ -74,5 +134,16 @@ irrespective of their original size.')
             reg_commit = self.extractRegisterCommitVal(line)
             csr_commit = self.extractCsrCommitVal(line)
             mem_val = self.extractMemVal(line)
-            instrObj = instructionObject(instr, 'None', addr, reg_commit = reg_commit, csr_commit = csr_commit, mem_val = mem_val, mnemonic = mnemonic, mode=mode)
+            (iptw_level_4, iptw_level_3, iptw_level_2, iptw_level_1, iptw_level_0,
+                dptw_level_4, dptw_level_3, dptw_level_2, dptw_level_1, dptw_level_0,
+                depa,
+                ieva,
+                iepa,
+                ieva_align,
+                iepa_align,
+                depa_align ) = self.extractVirtualMemory(line)
+            instrObj = instructionObject(instr, 'None', addr, reg_commit = reg_commit, csr_commit = csr_commit, mem_val = mem_val, mnemonic = mnemonic, mode=mode,
+                                        iptw_level_4=iptw_level_4, iptw_level_3=iptw_level_3, iptw_level_2=iptw_level_2, iptw_level_1=iptw_level_1, iptw_level_0=iptw_level_0,
+                                        dptw_level_4=dptw_level_4, dptw_level_3=dptw_level_3, dptw_level_2=dptw_level_2, dptw_level_1=dptw_level_1, dptw_level_0=dptw_level_0,
+                                        depa=depa, ieva=ieva, iepa=iepa, ieva_align=ieva_align, iepa_align=iepa_align, depa_align=depa_align)
             yield instrObj

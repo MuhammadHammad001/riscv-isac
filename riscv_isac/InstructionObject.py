@@ -84,7 +84,23 @@ class instructionObject():
         csr_commit = None,
         mnemonic = None,
         mode = None,
-        mem_val = None
+        mem_val = None,
+        iptw_level_4 = None,
+        iptw_level_3 = None, 
+        iptw_level_2 = None, 
+        iptw_level_1 = None, 
+        iptw_level_0 = None,
+        dptw_level_4 = None, 
+        dptw_level_3 = None, 
+        dptw_level_2 = None, 
+        dptw_level_1 = None, 
+        dptw_level_0 = None,
+        depa = None,
+        ieva = None,
+        iepa = None,
+        ieva_align = None,
+        iepa_align = None,
+        depa_align = None
     ):
 
         '''
@@ -125,7 +141,30 @@ class instructionObject():
         self.rd_nregs = 1
         self.mode = mode
         self.mem_val=mem_val
-
+        self.iptw_level_4=iptw_level_4
+        self.iptw_level_3=iptw_level_3
+        self.iptw_level_2=iptw_level_2
+        self.iptw_level_1=iptw_level_1
+        self.iptw_level_0=iptw_level_0
+        self.dptw_level_4=dptw_level_4
+        self.dptw_level_3=dptw_level_3
+        self.dptw_level_2=dptw_level_2
+        self.dptw_level_1=dptw_level_1
+        self.dptw_level_0=dptw_level_0
+        self.depa=depa
+        self.ieva=ieva
+        self.iepa=iepa
+        self.ieva_align=ieva_align
+        self.iepa_align=iepa_align
+        self.depa_align=depa_align
+        print(iptw_level_4, iptw_level_3, iptw_level_2, iptw_level_1, iptw_level_0,
+                dptw_level_4, dptw_level_3, dptw_level_2, dptw_level_1, dptw_level_0,
+                depa,
+                ieva,
+                iepa,
+                ieva_align,
+                iepa_align,
+                depa_align )
     def is_sig_update(self):
         return self.instr_name in instrs_sig_update
 
@@ -144,7 +183,22 @@ class instructionObject():
         instr_vars['xlen'] = xlen
         instr_vars['flen'] = flen
         instr_vars['mode'] = self.mode
-
+        instr_vars['iptw_level_4'] = self.iptw_level_4
+        instr_vars['iptw_level_3'] = self.iptw_level_3
+        instr_vars['iptw_level_2'] = self.iptw_level_2
+        instr_vars['iptw_level_1'] = self.iptw_level_1
+        instr_vars['iptw_level_0'] = self.iptw_level_0
+        instr_vars['dptw_level_4'] = self.dptw_level_4
+        instr_vars['dptw_level_3'] = self.dptw_level_3
+        instr_vars['dptw_level_2'] = self.dptw_level_2
+        instr_vars['dptw_level_1'] = self.dptw_level_1
+        instr_vars['dptw_level_0'] = self.dptw_level_0
+        instr_vars['depa'] = self.depa
+        instr_vars['ieva'] = self.ieva
+        instr_vars['iepa'] = self.iepa
+        instr_vars['ieva_align'] = self.ieva_align
+        instr_vars['iepa_align'] = self.iepa_align
+        instr_vars['depa_align'] = self.depa_align
         instr_vars['iflen'] = flen
         if self.instr_name.endswith(".s") or 'fmv.x.w' in self.instr_name:
             instr_vars['iflen'] = 32
