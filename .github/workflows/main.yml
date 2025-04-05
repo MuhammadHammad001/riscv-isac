@@ -42,11 +42,11 @@ jobs:
       - name: Publish package
         if: github.ref == 'refs/heads/master'
         env:
-          TWINE_USERNAME: ${{ secrets.PYPIUSERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPIPASSWORD }}
+          TWINE_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           python setup.py sdist bdist_wheel
           twine upload dist/*
+          
 
           
       - name: Extract release notes
